@@ -5,10 +5,11 @@
 //snippet-keyword:[Amazon Simple Notification Service]
 //snippet-service:[sns]
 //snippet-sourcetype:[full-example]
-//snippet-sourcedate:[2019-07-20]
-//snippet-sourceauthor:[jschwarzwalder AWS]
+//snippet-sourcedate:[4/6/2020]
+//snippet-sourceauthor:[scmacdon AWS]
+
 /*
- * Copyright 2010-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
@@ -21,15 +22,15 @@
  * express or implied. See the License for the specific language governing
  * permissions and limitations under the License.
  */
-//snippet-start:[sns.java2.ListSubscriptions.complete]
+
 package com.example.sns;
 
 //snippet-start:[sns.java2.ListSubscriptions.import]
-
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sns.SnsClient;
 import software.amazon.awssdk.services.sns.model.ListSubscriptionsRequest;
 import software.amazon.awssdk.services.sns.model.ListSubscriptionsResponse;
+import software.amazon.awssdk.services.sns.model.SnsException;
 //snippet-end:[sns.java2.ListSubscriptions.import]
 
 public class ListSubscriptions {
@@ -38,18 +39,28 @@ public class ListSubscriptions {
                 "ListSubscriptions - returns a list of Amazon SNS subscriptions.\n" +
                 "Usage: ListSubscriptions \n\n";
 
+        SnsClient snsClient = SnsClient.builder()
+                .region(Region.US_WEST_2)
+                .build();
 
-        //snippet-start:[sns.java2.ListSubscriptions.main]
+        listSNSSubscriptions(snsClient);
+    }
 
-        SnsClient snsClient = SnsClient.builder().region(Region.US_EAST_1).build();
+    //snippet-start:[sns.java2.ListSubscriptions.main]
+    public static void listSNSSubscriptions( SnsClient snsClient) {
 
-        ListSubscriptionsRequest request = ListSubscriptionsRequest.builder().build();
+        try {
+            ListSubscriptionsRequest request = ListSubscriptionsRequest.builder()
+                    .build();
 
-        ListSubscriptionsResponse result = snsClient.listSubscriptions(request);
+            ListSubscriptionsResponse result = snsClient.listSubscriptions(request);
+            System.out.println(result.subscriptions());
 
-        System.out.println(result.subscriptions());
+        } catch (SnsException e) {
+
+            System.err.println(e.awsErrorDetails().errorMessage());
+            System.exit(1);
+        }
         //snippet-end:[sns.java2.ListSubscriptions.main]
     }
 }
-//snippet-end:[sns.java2.ListSubscriptions.complete]
-

@@ -1,5 +1,15 @@
+// snippet-comment:[These are tags for the AWS doc team's sample catalog. Do not remove.]
+// snippet-sourcedescription:[GeneratePresignedUrlAndUploadObject.java demonstrates how to use the S3Presigner client object to create a presigned URL and upload an object to a S3 bucket]
+// snippet-service:[S3]
+// snippet-keyword:[Java]
+// snippet-keyword:[Amazon S3]
+// snippet-keyword:[Code Sample]
+// snippet-sourcetype:[full-example]
+// snippet-sourcedate:[2019-12-05]
+// snippet-sourceauthor:[AWS - scmacdon]
+
 /**
- * Copyright 2010-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * This file is licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License. A copy of
@@ -13,17 +23,6 @@
  *
  */
 
-// snippet-comment:[These are tags for the AWS doc team's sample catalog. Do not remove.]
-// snippet-sourcedescription:[GeneratePresignedUrlAndUploadObject.java demonstrates how to use the S3Presigner client object to create a presigned URL and upload an object to a S3 bucket]
-// snippet-service:[S3]
-// snippet-keyword:[Java]
-// snippet-keyword:[Amazon S3]
-// snippet-keyword:[Code Sample]
-// snippet-sourcetype:[full-example]
-// snippet-sourcedate:[2019-12-05]
-// snippet-sourceauthor:[AWS - scmacdon]
-
-// snippet-start:[presigned.java2.generatepresignedurl.complete]
 package com.example.s3;
 
 // snippet-start:[presigned.java2.generatepresignedurl.import]
@@ -32,8 +31,7 @@ import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.time.Duration;
-
-import software.amazon.awssdk.services.lambda.model.ServiceException;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 // snippet-end:[presigned.java2.generatepresignedurl.import]
@@ -50,7 +48,7 @@ public class GeneratePresignedUrlAndUploadObject {
         String bucketName = args[0];
         String keyName = args[1];
 
-        // Create an S3Presigner using the default AWS Region and credentials
+        // Create a S3Presigner by using the default AWS Region and credentials
         S3Presigner presigner = S3Presigner.create();
 
         try {
@@ -63,8 +61,7 @@ public class GeneratePresignedUrlAndUploadObject {
             System.out.println("Which HTTP method needs to be used when uploading a file: " +
                     presignedRequest.httpRequest().method());
 
-
-            //Upload content to the bucket by using this URL
+            // Upload content to the bucket by using this URL
             URL url = presignedRequest.url();
 
             // Create the connection and use it to upload the new object by using the pre-signed URL
@@ -79,17 +76,19 @@ public class GeneratePresignedUrlAndUploadObject {
             connection.getResponseCode();
             System.out.println("HTTP response code: " + connection.getResponseCode());
 
-            // It's recommended that you close the S3Presigner when it is done being used, because some credential
-            // providers (e.g. if your AWS profile is configured to assume an STS role) require system resources
-            // that need to be freed. If you are using one S3Presigner per application (as recommended), this
-            // usually isn't needed
+            /*
+            *  It's recommended that you close the S3Presigner when it is done being used, because some credential
+            * providers (e.g. if your AWS profile is configured to assume an STS role) require system resources
+            * that need to be freed. If you are using one S3Presigner per application (as recommended), this
+            * usually isn't needed
+            */
             presigner.close();
 
-        } catch (ServiceException | IOException e) {
+        } catch (S3Exception e) {
+            e.getStackTrace();
+        } catch (IOException e) {
             e.getStackTrace();
         }
-
         // snippet-end:[presigned.java2.generatepresignedurl.main]
     }
 }
-// snippet-end:[presigned.java2.generatepresignedurl.complete]

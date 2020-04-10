@@ -14,256 +14,209 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
-	"log"
-	"os"
-	"strconv"
-	"testing"
-	"time"
+    "encoding/json"
+    "io/ioutil"
+    "os"
+    "strconv"
+    "testing"
+    "time"
 
-	guuid "github.com/google/uuid"
+    "github.com/aws/aws-sdk-go/aws"
+    "github.com/aws/aws-sdk-go/aws/session"
+    "github.com/aws/aws-sdk-go/service/s3"
+    "github.com/aws/aws-sdk-go/service/s3/s3manager"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
+    "github.com/google/uuid"
 )
 
 type Config struct {
-	Region       string `json:"Region"`
-	InputBucket  string `json:"InputBucket"`
-	OutputBucket string `json:"OutputBucket"`
-	AudioFile    string `json:"AudioFile"`
-	ResultFile   string `json:"ResultFile"`
-	SleepSeconds int    `json:"SleepSeconds"`
-	JobName      string `json:"JobName"`
-	Debug        bool   `json:"Debug"`
+    InputBucket  string `json:"InputBucket"`
+    OutputBucket string `json:"OutputBucket"`
+    AudioFile    string `json:"AudioFile"`
+    ResultFile   string `json:"ResultFile"`
+    SleepSeconds int    `json:"SleepSeconds"`
+    JobName      string `json:"JobName"`
+    Debug        bool   `json:"Debug"`
 }
 
-func multiplyDuration(factor int64, d time.Duration) time.Duration {
-	return time.Duration(factor) * d
+func createBucket(sess *session.Session, bucket *string) error {
+    svc := s3.New(sess)
+
+    _, err := svc.CreateBucket(&s3.CreateBucketInput{
+        Bucket: bucket,
+    })
+    if err != nil {
+        return err
+    }
+
+    err = svc.WaitUntilBucketExists(&s3.HeadBucketInput{
+        Bucket: bucket,
+    })
+    if err != nil {
+        return err
+    }
+
+    return nil
 }
 
-func getNameOrDefault(defaultName string, envName string) string {
-	name := os.Getenv(envName)
+func deleteBucket(sess *session.Session, bucket *string) error {
+    svc := s3.New(sess)
 
-	if name == "" {
-		return defaultName
-	}
+    iter := s3manager.NewDeleteListIterator(svc, &s3.ListObjectsInput{
+        Bucket: bucket,
+    })
 
-	return name
+    err := s3manager.NewBatchDeleteWithClient(svc).Delete(aws.BackgroundContext(), iter)
+    if err != nil {
+        return err
+    }
+
+    _, err = svc.DeleteBucket(&s3.DeleteBucketInput{
+        Bucket: bucket,
+    })
+    if err != nil {
+        return err
+    }
+
+    err = svc.WaitUntilBucketNotExists(&s3.HeadBucketInput{
+        Bucket: bucket,
+    })
+    if err != nil {
+        return err
+    }
+
+    return nil
 }
 
-/*
-func DebugPrint(debug bool, s string) {
-	if debug {
-		fmt.Println("INFO: " + s)
-	}
+func cleanUp(t *testing.T, sess *session.Session, inputBucket, outputBucket *string, inputBucketCreated, outputBuckeCreated bool) {
+    if inputBucketCreated {
+        err := deleteBucket(sess, inputBucket)
+        if err != nil {
+            t.Log("You'll have to delete input bucket " + *inputBucket + " yourself")
+        }
+
+        t.Log("Deleted input bucket " + *inputBucket)
+    }
+
+    if outputBuckeCreated {
+        err := deleteBucket(sess, outputBucket)
+        if err != nil {
+            t.Log("You'll have to delete output bucket " + *outputBucket + " yourself")
+        }
+
+        t.Log("Deleted output bucket " + *outputBucket)
+    }
 }
-*/
+
+func getName(configName, envName, defaultName string) (bool, string) {
+    if configName != "" {
+        return false, configName
+    }
+
+    name := os.Getenv(envName)
+
+    if name != "" {
+        return false, name
+    }
+
+    return true, defaultName
+}
 
 func TestAudioToText(t *testing.T) {
-	// When the test started:
-	thisTime := time.Now()
-	nowString := thisTime.Format("20060102150405")
-	fmt.Println("Starting unit test at " + nowString)
-	fmt.Println("")
+    // When the test started:
+    thisTime := time.Now()
+    nowString := thisTime.Format("20060102150405")
+    t.Log("Starting unit test at " + nowString)
 
-	// Get configuration from config.json
-	configFileName := "config.json"
+    // Get configuration from config.json
+    configFileName := "config.json"
 
-	// Get entire file as a JSON string
-	content, err := ioutil.ReadFile(configFileName)
-	if err != nil {
-		log.Fatal(err)
-	}
+    // Get entire file as a JSON string
+    content, err := ioutil.ReadFile(configFileName)
+    if err != nil {
+        t.Fatal(err)
+    }
 
-	// Convert []byte to string
-	text := string(content)
-	config := Config{}
+    // Convert []byte to string
+    text := string(content)
+    config := Config{}
 
-	// Marshall JSON string in text into job struct
-	json.Unmarshal([]byte(text), &config)
+    // Marshall JSON string in text into job struct
+    err = json.Unmarshal([]byte(text), &config)
+    if err != nil {
+        t.Fatal(err)
+    }
 
-	// Add timestamp to job name
-	config.JobName = config.JobName + "-" + nowString
+    // Add timestamp to job name
+    config.JobName = config.JobName + "-" + nowString
 
-	DebugPrint(config.Debug, "Got configuration values:")
-	DebugPrint(config.Debug, "Region:       "+config.Region)
-	DebugPrint(config.Debug, "InputBucket:  "+config.InputBucket)
-	DebugPrint(config.Debug, "OutputBucket: "+config.OutputBucket)
-	DebugPrint(config.Debug, "AudioFile:    "+config.AudioFile)
-	DebugPrint(config.Debug, "ResultFile:   "+config.ResultFile)
-	seconds := strconv.Itoa(config.SleepSeconds)
-	DebugPrint(config.Debug, "SleepSeconds: "+seconds)
-	DebugPrint(config.Debug, "JobName:      "+config.JobName)
+    t.Log("InputBucket:  " + config.InputBucket)
+    t.Log("OutputBucket: " + config.OutputBucket)
+    t.Log("AudioFile:    " + config.AudioFile)
+    t.Log("ResultFile:   " + config.ResultFile)
+    seconds := strconv.Itoa(config.SleepSeconds)
+    t.Log("SleepSeconds: " + seconds)
+    t.Log("JobName:      " + config.JobName)
+    if config.Debug {
+        t.Log("Debug:        enabled")
+    } else {
+        t.Log("Debug:        disabled")
+    }
 
-	// Create random string
-	id := guuid.New()
-	defaultName := id.String()
+    // Create random string
+    id := uuid.New()
+    defaultName := id.String()
 
-	// Get region from environment variable AWS_REGION
-	region := getNameOrDefault(config.Region, "AWS_REGION")
+    _, audioFile := getName(config.AudioFile, "AUDIO_FILE", "")
+    _, resultsFile := getName(config.ResultFile, "RESULTS_FILE", "")
 
-	/*
-		Bucket names can be up to 63 characters long,
-		and can contain only lower-case characters, numbers, periods, and dashes.
-	*/
+    if audioFile == "" || resultsFile == "" {
+        t.Fatal("You must supply the name of the audio file in config.json or AUDIO_FILE env variable and the name of the results file in config.json or RESULTS_FILE env variable.")
+    }
 
-	// Get input bucket name from INPUT_BUCKET env variable
-	inputBucket := config.InputBucket
+    // Get input bucket name
+    inputBucketCreated, inputBucket := getName(config.InputBucket, "INPUT_BUCKET", "input-"+defaultName)
+    outputBucketCreated, outputBucket := getName(config.OutputBucket, "OUTPUT_BUCKET", "output-"+defaultName)
 
-	if inputBucket == "" {
-		inputBucket = "input-" + defaultName
-	}
+    _, sleepSecondsStr := getName(seconds, "SLEEP_SECONDS", "")
 
-	inputBucket = getNameOrDefault(inputBucket, "INPUT_BUCKET")
+    sleepSeconds, err := strconv.ParseInt(sleepSecondsStr, 10, 64)
+    if err != nil {
+        t.Fatal(err)
+    }
 
-	// Get output bucket name from OUTPUT_BUCKET env variable
-	outputBucket := config.OutputBucket
+    _, jobName := getName(config.JobName, "JOB_NAME", "ConvertAudioToText")
+    jobName = jobName + nowString
 
-	if outputBucket == "" {
-		outputBucket = "output-" + defaultName
-	}
-	outputBucket = getNameOrDefault(outputBucket, "OUTPUT_BUCKET")
+    sess := session.Must(session.NewSessionWithOptions(session.Options{
+        SharedConfigState: session.SharedConfigEnable,
+    }))
 
-	// Get audio file name from AUDIO_FILE env variable
-	audioFile := getNameOrDefault(config.AudioFile, "AUDIO_FILE")
+    if inputBucketCreated {
+        err = createBucket(sess, &inputBucket)
+        if err != nil {
+            t.Fatal(err)
+        }
+        t.Log("Created input bucket " + inputBucket)
+    }
 
-	// Get results file name from RESULTS_FILE env variable
-	resultsFile := getNameOrDefault(config.ResultFile, "RESULTS_FILE")
+    if outputBucketCreated {
+        err = createBucket(sess, &outputBucket)
+        if err != nil {
+            t.Fatal(err)
+        }
+        t.Log("Created output bucket " + outputBucket)
+    }
 
-	// Get how long to wait, in seconds, for file to show up in output bucket from SLEEP_SECONDS env variable
-	sleepSecondsStr := getNameOrDefault(seconds, "SLEEP_SECONDS")
+    t.Log("Running transcription, which may take a couple of minutes")
 
-	sleepSeconds, err := strconv.ParseInt(sleepSecondsStr, 10, 64)
-	if err != nil {
-		fmt.Println("Got an error parsing " + sleepSecondsStr + " as an integer")
-		fmt.Println(err)
-		os.Exit(1)
-	}
+    duration, err := RunTranscription(sess, &audioFile, &inputBucket, &outputBucket, &jobName, &resultsFile, &sleepSeconds)
+    if err != nil {
+        cleanUp(t, sess, &inputBucket, &outputBucket, inputBucketCreated, outputBucketCreated)
+        t.Fatal(err)
+    }
 
-	// Create a session, in the specified region, to use for all operations,
-	// using default credentials
-	sess := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String(region),
-	}))
+    t.Log("Transcription was successful after " + strconv.Itoa(int(duration)) + " seconds")
 
-	// Create input and output buckets
-	err = createBucket(sess, inputBucket)
-	if err != nil {
-		fmt.Println("Could not create bucket " + inputBucket)
-		os.Exit(1)
-	} else {
-		fmt.Println("Created bucket " + inputBucket)
-	}
-
-	err = createBucket(sess, outputBucket)
-	if err != nil {
-		fmt.Println("Could not create bucket " + outputBucket)
-		os.Exit(1)
-	} else {
-		fmt.Println("Created bucket " + outputBucket)
-	}
-
-	fmt.Println("")
-
-	// Upload audio file to bucket
-	fileURI, err := dropFile(config.Debug, sess, audioFile, inputBucket)
-	if err != nil {
-		fmt.Println("Failed to drop " + audioFile + " into bucket " + inputBucket)
-		fmt.Println(err)
-		os.Exit(1)
-	} else {
-		DebugPrint(config.Debug, "Dropped "+audioFile+" into bucket "+inputBucket)
-	}
-
-	err = startTranscription(sess, fileURI, outputBucket, config.JobName)
-	if err != nil {
-		fmt.Println("Failed to start transcribing " + audioFile)
-		fmt.Println(err)
-		os.Exit(1)
-	} else {
-		fmt.Println("Started transcription")
-	}
-
-	// loop until the job is done
-	// Wait for sleepSeconds seconds (is there a better way???)
-	ts := multiplyDuration(sleepSeconds, time.Second)
-
-	for true {
-		done, err := isTranscriptionDone(sess, config.JobName)
-		if err != nil {
-			fmt.Println("Transcribing " + audioFile + " failed")
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		if done {
-			fmt.Println("")
-			fmt.Println("Transcription complete")
-			break
-		} else {
-			fmt.Print(".")
-		}
-
-		time.Sleep(ts)
-	}
-
-	fmt.Println("")
-
-	// Now get results of transcription
-	resultsURI, err := getResultURI(sess, config.JobName)
-	if err != nil {
-		fmt.Println("Failed to get text from " + outputBucket)
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	text, err = getTextFromURI(sess, outputBucket, resultsURI)
-	if err != nil {
-		fmt.Println("Could not get results from bucket " + outputBucket)
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	expected, err := getTextFromFile(resultsFile)
-	if err != nil {
-		fmt.Println("Could not get text from " + resultsFile)
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	// Compare the results with the expected results
-	if text == expected {
-		fmt.Println("Got the expected results: ")
-		fmt.Println("    " + text)
-	} else {
-		fmt.Println("Did NOT get the expected results. Got:")
-		fmt.Println("'" + text + "'")
-		fmt.Println("instead of:")
-		fmt.Println("'" + expected + "'")
-
-	}
-
-	fmt.Println("")
-
-	// Clean up
-	err = deleteBucket(sess, inputBucket)
-	if err != nil {
-		fmt.Println("Could not delete bucket: " + inputBucket)
-		os.Exit(1)
-	} else {
-		fmt.Println("Deleted bucket " + inputBucket)
-	}
-
-	err = deleteBucket(sess, outputBucket)
-	if err != nil {
-		fmt.Println("Could not delete bucket: " + outputBucket)
-		os.Exit(1)
-	} else {
-		fmt.Println("Deleted bucket " + outputBucket)
-	}
-
-	fmt.Println("")
+    cleanUp(t, sess, &inputBucket, &outputBucket, inputBucketCreated, outputBucketCreated)
 }

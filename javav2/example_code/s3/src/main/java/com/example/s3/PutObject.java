@@ -3,7 +3,7 @@
 //snippet-keyword:[Code Sample]
 //snippet-service:[Amazon S3]
 //snippet-sourcetype:[full-example]
-//snippet-sourcedate:[2020-02-06]
+//snippet-sourcedate:[2/6/2020]
 //snippet-sourceauthor:[scmacdon-aws]
 /*
 Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
@@ -32,7 +32,7 @@ import java.io.IOException;
 
 public class PutObject {
 
-   public static void main(String[] args) {
+    public static void main(String[] args) {
         final String USAGE = "\n" +
                 "Usage:\n" +
                 "  PutObject <bucket> <object> <path> \n\n" +
@@ -43,13 +43,13 @@ public class PutObject {
                 "Examples:\n" +
                 "    PutObject mybucket book.pdf C:/AWS/book2.pdf";
 
-          if (args.length < 3) {
-              System.out.println(USAGE);
+        if (args.length < 3) {
+            System.out.println(USAGE);
             System.exit(1);
-         }
+        }
 
         String bucketName = args[0];
-        String objectKey =  args[1];
+        String objectKey = args[1];
         String objectPath = args[2];
 
         System.out.println("Putting object " + objectKey +" into bucket "+bucketName);
@@ -66,7 +66,7 @@ public class PutObject {
     }
 
     // snippet-start:[s3.java2.s3_object_upload.main]
-    public static  String putS3Object(S3Client s3, String bucketName, String objectKey, String objectPath) {
+    public static String putS3Object(S3Client s3, String bucketName, String objectKey, String objectPath) {
 
         try {
             //Put a file into the bucket
@@ -77,7 +77,6 @@ public class PutObject {
                     RequestBody.fromBytes(getObjectFile(objectPath)));
 
             return response.eTag();
-
         } catch (S3Exception | FileNotFoundException e) {
             System.err.println(e.getMessage());
             System.exit(1);

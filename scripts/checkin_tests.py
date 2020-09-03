@@ -62,6 +62,7 @@ DENY_LIST = {'alpha-docs-aws.amazon.com', 'integ-docs-aws.amazon.com'}
 ALLOW_LIST = {
     'AKIAIOSFODNN7EXAMPLE',
     'AppStreamUsageReportsCFNGlueAthenaAccess',
+    'aws/acm/model/DescribeCertificateRequest',
     'aws/cloudtrail/model/LookupEventsRequest',
     'aws/codebuild/model/BatchGetBuildsResult',
     'aws/codecommit/model/DeleteBranchRequest',
@@ -83,6 +84,8 @@ ALLOW_LIST = {
     'aws/neptune/model/CreateDBClusterRequest',
     'aws/neptune/model/DeleteDBClusterRequest',
     'aws/neptune/model/ModifyDBClusterRequest',
+    'aws/kms/model/ScheduleKeyDeletionRequest',
+    'KMSWithContextEncryptionMaterialsExample',
     'CertificateTransparencyLoggingPreference',
     'ChangeMessageVisibilityBatchRequestEntry',
     'com/greengrass/latest/developerguide/lra',
@@ -99,6 +102,17 @@ ALLOW_LIST = {
     'videoMetaData=celebrityRecognitionResult',
     'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
     'com/v1/documentation/api/latest/guide/s3',
+    'iam/commands/GetServerCertificateCommand',
+    'iam/commands/GetAccessKeyLastUsedCommand',
+    'iam/commands/GetAccessKeyLastUsedCommand',
+    'iam/commands/GetServerCertificateCommand',
+    'cloudwatch/commands/PutMetricDataCommand',
+    'ses/commands/VerifyDomainIdentityCommand',
+    'ses/commands/DeleteReceiptRuleSetCommand',
+    'ses/commands/DeleteReceiptRuleSetCommand',
+    'ses/commands/CreateReceiptRuleSetCommand',
+    'ses/commands/VerifyDomainIdentityCommand',
+    'ses/commands/VerifyDomainIdentityCommand'
 }
 
 

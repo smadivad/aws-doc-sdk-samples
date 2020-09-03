@@ -3,8 +3,8 @@
 //snippet-keyword:[Code Sample]
 //snippet-service:[Amazon S3]
 //snippet-sourcetype:[full-example]
-//snippet-sourcedate:[2020-02-06]
-//snippet-sourceauthor:[scmacdon]
+//snippet-sourcedate:[2/6/2020]
+//snippet-sourceauthor:[scmacdon-aws]
 
 /*
    Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
@@ -64,12 +64,11 @@ public class CopyObject {
         //Create the S3Client object
         Region region = Region.US_WEST_2;
         S3Client s3 = S3Client.builder().region(region).build();
-
-        CopyBucketObject (s3, fromBucket, objectKey, toBucket);
+        copyBucketObject (s3, fromBucket, objectKey, toBucket);
     }
 
     // snippet-start:[s3.java2.copy_object.main]
-    public static String CopyBucketObject (S3Client s3, String fromBucket, String objectKey, String toBucket) {
+    public static String copyBucketObject (S3Client s3, String fromBucket, String objectKey, String toBucket) {
 
         String encodedUrl = null;
         try {

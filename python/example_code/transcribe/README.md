@@ -32,7 +32,6 @@ transcribe an audio file to a text file. Learn how to:
   on the AWS website.
 - Running this code might result in charges to your AWS account.
 
-
 ## Running the code
 
 Run this example at a command prompt with the following command.
@@ -59,7 +58,7 @@ transcript has some accuracy problems. The demo shows how to create and refine a
 custom vocabulary of nonsense words. When the job is run again with the custom
 vocabulary, the accuracy of the transcript is improved.
 
-**Jabberwocky.mp3**
+**.media/Jabberwocky.mp3**
 
 The audio file that contains the reading of *Jabberwocky*. This file is uploaded to
 Amazon S3 at the beginning of the demo.
